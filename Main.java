@@ -22,27 +22,47 @@ public class Main {
             if (statuses[i].equals("PENDING")) {
                 statuses[i] = "RUNNING";
 
-                System.out.println("Starting: " + jobs[i]);
+                startJob(jobs[i]);
             }
 
             if (statuses[i].equals("RUNNING")) {
-                try {
-                    Thread.sleep(2000);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    return;
+                boolean success = false;
+                int attempts = 0;
+
+                while (!success && attempts < 3) {
+                    attempts++;
+                    System.out.println(" Attempt " + attempts + " for " + jobs[i]);
+                    success = processJob(jobs[i], attempts);
                 }
 
-                statuses[i] = "COMPLETED";
+                if (success){
+                    statuses[i] = "COMPLETED";
+                }else{
+                    statuses[i] = "FAILED" ;
+                }
             }
 
             System.out.println("Job " + (i + 1) + ": " + jobs[i] + " - " + statuses[i]);
         }
     }
 
-    // Our new method
+    // Method 1: Starts a job
     public static void startJob(String jobName) {
         System.out.println("Starting: " + jobName);
     }
 
+    // Method 2: Simulates processing a job
+    public static boolean processJob(String jobName , int attempt) {
+        System.out.println("Processing: " + jobName);
+        if (jobName.equals("Send Email") && attempt == 1 ) {
+            return false;
+        }
+        try {
+            Thread.sleep(2000);
+            return true;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
+    }
 }
