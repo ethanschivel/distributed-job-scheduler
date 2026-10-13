@@ -1,62 +1,89 @@
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
 public class Main {
 
     public static void main(String[] args) {
         System.out.println("Job Scheduler Started!");
 
-        String[] jobs = {
-            "Process Video",
-            "Send Email",
-            "Generate Report",
-            "Backup Database"
+        // Create our Job objects
+        Job[] jobs = {
+            new Job("Process Video"),
+            new Job("Send Email"),
+            new Job("Generate Report"),
+            new Job("Backup Database")
         };
 
-        String[] statuses = {
-            "PENDING",
-            "PENDING",
-            "PENDING",
-            "PENDING"
-        };
+        // Create 3 worker threads
+        ExecutorService executor = Executors.newFixedThreadPool(3);
 
-        for (int i = 0; i < jobs.length; i++) {
+        // Submit each job to the workers
+        for (Job job : jobs) {
 
-            if (statuses[i].equals("PENDING")) {
-                statuses[i] = "RUNNING";
+            executor.submit(() -> {
 
-                startJob(jobs[i]);
-            }
+                job.setStatus("RUNNING");
+                System.out.println("Starting: " + job.getName());
 
-            if (statuses[i].equals("RUNNING")) {
                 boolean success = false;
-                int attempts = 0;
 
-                while (!success && attempts < 3) {
-                    attempts++;
-                    System.out.println(" Attempt " + attempts + " for " + jobs[i]);
-                    success = processJob(jobs[i], attempts);
+                // Retry up to 3 times
+                while (!success && job.getAttempts() < 3) {
+
+                    job.incrementAttempts();
+
+                    System.out.println(
+                        "Attempt " + job.getAttempts()
+                        + " for " + job.getName()
+                    );
+
+                    success = processJob(
+                        job.getName(),
+                        job.getAttempts()
+                    );
                 }
 
-                if (success){
-                    statuses[i] = "COMPLETED";
-                }else{
-                    statuses[i] = "FAILED" ;
+                if (success) {
+                    job.setStatus("COMPLETED");
+                } else {
+                    job.setStatus("FAILED");
                 }
-            }
 
-            System.out.println("Job " + (i + 1) + ": " + jobs[i] + " - " + statuses[i]);
+                System.out.println(
+                    "Job: " + job.getName()
+                    + " - " + job.getStatus()
+                );
+            });
         }
+
+        // Stop accepting new jobs
+        executor.shutdown();
+
+        // Wait for jobs to finish
+        try {
+            if (!executor.awaitTermination(60, TimeUnit.SECONDS)) {
+                System.out.println("Some jobs are still running.");
+                executor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+
+        System.out.println("Job Scheduler Finished!");
     }
 
-    // Method 1: Starts a job
-    public static void startJob(String jobName) {
-        System.out.println("Starting: " + jobName);
-    }
+    public static boolean processJob(String jobName, int attempt) {
 
-    // Method 2: Simulates processing a job
-    public static boolean processJob(String jobName , int attempt) {
         System.out.println("Processing: " + jobName);
-        if (jobName.equals("Send Email") && attempt == 1 ) {
+
+        // Simulate Send Email failing on its first attempt
+        if (jobName.equals("Send Email") && attempt == 1) {
             return false;
         }
+
         try {
             Thread.sleep(2000);
             return true;
